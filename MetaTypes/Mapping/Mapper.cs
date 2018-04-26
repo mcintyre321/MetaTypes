@@ -15,17 +15,25 @@ namespace MetaTypes.Mapping
         {
         }
 
-        public class ToRule : ValueOf<Func<ToRuleArgs, OneOf<TOut, TOut[], object, NotApplicable>>, ToRule>
+        public class ToRule : ValueOf<Func<ToRuleArgs, RuleOutput>, ToRule>
         {
+        }
+
+        public class RuleOutput : ValueOf<OneOf<TOut, TOut[], object, NotApplicable>, RuleOutput>
+        {
+            public static implicit operator RuleOutput(TOut x) => RuleOutput.From(x);
+            public static implicit operator RuleOutput(TOut[] x) => RuleOutput.From(x);
+            public static implicit operator RuleOutput(NotApplicable x) => RuleOutput.From(x);
         }
 
         public IList<ToRule> Rules { get; } = new List<ToRule>();
 
         public void AddRule<T>(Func<T, TOut> map)
-            => Rules.Add(ToRule.From(args => typeof(T).GetTypeInfo()
-                .IsAssignableFrom(args.Value.targetType.GetTypeInfo())
-                ? (OneOf.OneOf<TOut, TOut[], NotApplicable>) map((T) args.Value.target)
+            => Rules.Add(ToRule.From(args => 
+                typeof(T).GetTypeInfo().IsAssignableFrom(args.Value.targetType.GetTypeInfo())
+                ? RuleOutput.From(map((T) args.Value.target))
                 : new NotApplicable()));
+
 
         public TOut[] Map(object target) => To(target).Match(one => new[] {one}, many => many, none => new TOut[0]);
 
@@ -37,7 +45,7 @@ namespace MetaTypes.Mapping
             var ruleArgs = ToRuleArgs.From((targetType, target));
             foreach (var rule in Rules)
             {
-                var ruleResult = rule.Value.Invoke(ruleArgs);
+                var ruleResult = rule.Value.Invoke(ruleArgs).Value;
                 if (ruleResult.TryPickT0(out var mv, out var arrayOrObjectOrNa))
                     return mv;
                 if (arrayOrObjectOrNa.TryPickT0(out var array, out OneOf<object, NotApplicable> objOrNotApplicable))
