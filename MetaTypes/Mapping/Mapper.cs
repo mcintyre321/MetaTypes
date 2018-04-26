@@ -30,8 +30,9 @@ namespace MetaTypes.Mapping
         public TOut[] Map(object target) => To(target).Match(one => new[] {one}, many => many, none => new TOut[0]);
 
 
-        OneOf<TOut, TOut[], NotApplicable> To(object target)
+        OneOf<TOut, TOut[], NotApplicable> To(object target, int depth = 0, string path = null)
         {
+            if (depth > MaxDepth) throw new Exception("MaxDepth detected");
             var targetType = target.GetType();
             var ruleArgs = ToRuleArgs.From((targetType, target));
             foreach (var rule in Rules)
@@ -43,13 +44,15 @@ namespace MetaTypes.Mapping
                     return array;
                 if (objOrNotApplicable.TryPickT0(out object obj, out NotApplicable notApplicable))
                 {
-                    if (obj == target) throw new Exception("Recursion detected");
-                    return To(obj);
+                    path = path == null ? targetType.Name : path + "->" + targetType.Name;
+                    return To(obj, ++depth, path);
                 }
             }
 
             return new NotApplicable();
         }
+
+        public int MaxDepth { get; set; } = 10;
     }
     public struct NotApplicable
     {
