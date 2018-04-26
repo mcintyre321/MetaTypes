@@ -15,7 +15,7 @@ namespace MetaTypes.Mapping
         {
         }
 
-        public class ToRule : ValueOf<Func<ToRuleArgs, OneOf<TOut, TOut[], NotApplicable>>, ToRule>
+        public class ToRule : ValueOf<Func<ToRuleArgs, OneOf<TOut, TOut[], object, NotApplicable>>, ToRule>
         {
         }
 
@@ -37,10 +37,15 @@ namespace MetaTypes.Mapping
             foreach (var rule in Rules)
             {
                 var ruleResult = rule.Value.Invoke(ruleArgs);
-                if (ruleResult.TryPickT0(out var mv, out var arrayOrNa))
+                if (ruleResult.TryPickT0(out var mv, out var arrayOrObjectOrNa))
                     return mv;
-                if (arrayOrNa.TryPickT0(out var array, out NotApplicable notApplicable))
+                if (arrayOrObjectOrNa.TryPickT0(out var array, out OneOf<object, NotApplicable> objOrNotApplicable))
                     return array;
+                if (objOrNotApplicable.TryPickT0(out object obj, out NotApplicable notApplicable))
+                {
+                    if (obj == target) throw new Exception("Recursion detected");
+                    return To(obj);
+                }
             }
 
             return new NotApplicable();
