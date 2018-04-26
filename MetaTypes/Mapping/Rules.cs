@@ -7,16 +7,22 @@ namespace MetaTypes.Mapping
 {
     public static class Rules
     {
+        public static Mapper<MetaValue> CreateWithDefaultRules()
+        {
+            var binder = new Mapper<MetaValue>();
+            binder.AddRule(Rules.StringsAreMappedToMetaScalars());
+            binder.AddRule(Rules.CollectionsAreMappedToMetaArrays(binder));
+            binder.AddRule(Rules.ObjectsAreDecomposed(binder));
+            return binder;
+        }
+
         public static Func<string, MetaValue> StringsAreMappedToMetaScalars() => c => MetaScalar.From(c);
 
-        public static Func<ICollection, MetaValue> CollectionsAreMappedToMetaArrays(MetaModelReflectionBinder binder) => 
-            c => MetaArray.From(
-                c.Cast<object>().Select(x => 
-                        binder.ToMetaValue(x).Match(metaValue => metaValue, noMapping => null as MetaValue))
-                        .Where(mv => mv != null).ToArray()
-                );
+        public static Func<ICollection, MetaValue> CollectionsAreMappedToMetaArrays(Mapper<MetaValue> binder) =>
+            c => MetaArray.From(c.Cast<object>().Select(binder.Map).SelectMany(x => x));
 
-        public static Func<object, MetaValue> ObjectsAreDecomposed(MetaModelReflectionBinder binder)
+
+        public static Func<object, MetaValue> ObjectsAreDecomposed(Mapper<MetaValue> binder)
         {
             object FromMeta(MetaValue target)
             {
@@ -27,7 +33,6 @@ namespace MetaTypes.Mapping
                 );
             }
 
-            
             MetaObject ToMetaObject(object target)
             {
                 MetaType ToMetaType(Type type)
@@ -64,13 +69,13 @@ namespace MetaTypes.Mapping
                     Name = MetaName.From(method.Name),
                     Call = args =>
                         ToResult(() => method.Invoke(target, args.Select(arg => FromMeta(arg.Value)).ToArray())),
-                    Parameters = method.GetParameters().Select(p => ToParam(p))
+                    Parameters = method.GetParameters().Select(ToParam)
                 };
                 MetaProperty ToProperty(PropertyInfo propertyInfo) => new MetaProperty()
                 {
                     Name = MetaName.From(propertyInfo.Name),
                     Type = ToMetaType(propertyInfo.PropertyType),
-                    GetValue = () => binder.ToMetaValue(propertyInfo.GetValue(target)).Match(mv => mv, noMapping => throw new Exception("No mapping"))
+                    GetValue = () => binder.Map(propertyInfo.GetValue(target)).Single()
                 };
                 return new MetaObject()
                 {
