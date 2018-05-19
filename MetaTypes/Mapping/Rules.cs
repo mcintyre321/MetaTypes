@@ -1,28 +1,39 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Transmuter;
 
 namespace MetaTypes.Mapping
 {
+
     public static class Rules
     {
-        public static Mapper<MetaValue> CreateWithDefaultRules()
+        public static Mapper<MetaValue> CreateMapper()
         {
             var binder = new Mapper<MetaValue>();
-            binder.AddRule(Rules.StringsAreMappedToMetaScalars());
-            binder.AddRule(Rules.CollectionsAreMappedToMetaArrays(binder));
-            binder.AddRule(Rules.ObjectsAreDecomposed(binder));
+            binder.Rules.Add((nameof(StringsAreMappedToMetaScalars), StringsAreMappedToMetaScalars()));
+            binder.Rules.Add((nameof(CollectionsAreMappedToMetaArrays), CollectionsAreMappedToMetaArrays(binder)));
+            binder.Rules.Add((nameof(ObjectsAreDecomposed), ObjectsAreDecomposed(binder)));
             return binder;
         }
 
-        public static Func<string, MetaValue> StringsAreMappedToMetaScalars() => c => MetaScalar.From(c);
+        public static Mapper<MetaValue>.ToRule StringsAreMappedToMetaScalars() => o =>
+              (o is string str) ? ((Mapper<MetaValue>.RuleOutput)(MetaValue)MetaScalar.From(str)) : new NA();
 
-        public static Func<ICollection, MetaValue> CollectionsAreMappedToMetaArrays(Mapper<MetaValue> binder) =>
-            c => MetaArray.From(c.Cast<object>().Select(binder.Map).SelectMany(x => x));
+        public static Mapper<MetaValue>.ToRule CollectionsAreMappedToMetaArrays(Mapper<MetaValue> binder) => o =>
+        {
+            if (o is ICollection c)
+            {
+                var items = c.Cast<object>().Select(binder.Map).Where(ob => ob.IsT0).Select(x => x.Match(mv => mv, na => null)).ToArray();
+                return ((Mapper<MetaValue>.RuleOutput)(MetaValue)MetaArray.From(items));
+            }
+            return new NA();
+        };
 
 
-        public static Func<object, MetaValue> ObjectsAreDecomposed(Mapper<MetaValue> binder)
+        public static Mapper<MetaValue>.ToRule ObjectsAreDecomposed(Mapper<MetaValue> binder)
         {
             object FromMeta(MetaValue target)
             {
@@ -75,7 +86,12 @@ namespace MetaTypes.Mapping
                 {
                     Name = MetaName.From(propertyInfo.Name),
                     Type = ToMetaType(propertyInfo.PropertyType),
-                    GetValue = () => binder.Map(propertyInfo.GetValue(target)).Single()
+                    GetValue = () =>
+                    {
+                        var value = propertyInfo.GetValue(target);
+                        if (value is string str) return MetaScalar.From(str);
+                        return null;
+                    }
                 };
                 return new MetaObject()
                 {
@@ -84,7 +100,7 @@ namespace MetaTypes.Mapping
                     Actions = target.GetType().GetTypeInfo().DeclaredMethods.Where(t => !t.IsSpecialName && t.DeclaringType == target.GetType()).Select(ToAction).ToArray()
                 };
             }
-            return target => ToMetaObject(target);
+            return target => (Mapper<MetaValue>.RuleOutput)(MetaValue)ToMetaObject(target);
         }
     }
 }
