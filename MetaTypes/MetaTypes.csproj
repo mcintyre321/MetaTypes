@@ -19,6 +19,6 @@
     <PackageReference Include="OneOf" Version="2.1.124" />
     <PackageReference Include="system.valuetuple" Version="4.4.0" />
     <PackageReference Include="valueof" Version="1.0.7" />
-    <PackageReference Include="Transmuter" Version="1.0.2" />
+    <PackageReference Include="Transmuter" Version="1.0.5" />
   </ItemGroup>
 </Project>
