@@ -88,7 +88,7 @@ namespace MetaTypes.Mapping
                     Type = ToMetaType(propertyInfo.PropertyType),
                     GetValue = () =>
                     {
-                        return binder.Map(propertyInfo.GetValue(target));
+                        return binder.Map(propertyInfo.GetValue(target)).AsT0;
                     }
                 };
                 return new MetaObject()
