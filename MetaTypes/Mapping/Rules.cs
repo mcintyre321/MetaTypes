@@ -88,9 +88,7 @@ namespace MetaTypes.Mapping
                     Type = ToMetaType(propertyInfo.PropertyType),
                     GetValue = () =>
                     {
-                        var value = propertyInfo.GetValue(target);
-                        if (value is string str) return MetaScalar.From(str);
-                        return null;
+                        return propertyInfo.GetValue(target);
                     }
                 };
                 return new MetaObject()
