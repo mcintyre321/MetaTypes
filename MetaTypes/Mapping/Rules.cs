@@ -13,14 +13,20 @@ namespace MetaTypes.Mapping
         public static Mapper<MetaValue> CreateMapper()
         {
             var binder = new Mapper<MetaValue>();
-            binder.Rules.Add((nameof(StringsAreMappedToMetaScalars), StringsAreMappedToMetaScalars()));
+            binder.Rules.Add((nameof(MetaScalarsAreMapped), MetaScalarsAreMapped()));
             binder.Rules.Add((nameof(CollectionsAreMappedToMetaArrays), CollectionsAreMappedToMetaArrays(binder)));
             binder.Rules.Add((nameof(ObjectsAreDecomposed), ObjectsAreDecomposed(binder)));
             return binder;
         }
 
-        public static Mapper<MetaValue>.ToRule StringsAreMappedToMetaScalars() => o =>
-              (o is string str) ? ((Mapper<MetaValue>.RuleOutput)(MetaValue)MetaScalar.From(str)) : new NA();
+        public static Mapper<MetaValue>.ToRule MetaScalarsAreMapped() => o =>
+            o == null ? (Mapper<MetaValue>.RuleOutput) (MetaValue) MetaScalar.From(new MetaNull()) :
+            (o is string str) ? ((Mapper<MetaValue>.RuleOutput)(MetaValue)MetaScalar.From(str)) :
+            (o is DateTimeOffset dt) ? ((Mapper<MetaValue>.RuleOutput)(MetaValue)MetaScalar.From(dt)) :
+            (o is decimal m) ? ((Mapper<MetaValue>.RuleOutput)(MetaValue)MetaScalar.From(m)) :
+            (o is float f) ? ((Mapper<MetaValue>.RuleOutput)(MetaValue)MetaScalar.From(f)) :
+            (o is double d) ? ((Mapper<MetaValue>.RuleOutput)(MetaValue)MetaScalar.From(d)) :
+            (o is int i) ? ((Mapper<MetaValue>.RuleOutput) (MetaValue) MetaScalar.From(i)) : new NA();
 
         public static Mapper<MetaValue>.ToRule CollectionsAreMappedToMetaArrays(Mapper<MetaValue> binder) => o =>
         {
@@ -67,12 +73,12 @@ namespace MetaTypes.Mapping
                 {
                     try
                     {
-                        execute();
-                        return MetaResult.From(true);
+                        var result = execute();
+                        return MetaResult.From(binder.Map(result).AsT0);
                     }
                     catch (Exception ex)
                     {
-                        return MetaResult.From(false);
+                        return MetaResult.From(MetaError.From(ex.Message));
                     }
                 }
                 MetaAction ToAction(MethodInfo method) => new MetaAction()
@@ -88,7 +94,8 @@ namespace MetaTypes.Mapping
                     Type = ToMetaType(propertyInfo.PropertyType),
                     GetValue = () =>
                     {
-                        return binder.Map(propertyInfo.GetValue(target)).AsT0;
+                        var value = propertyInfo.GetValue(target);
+                        return value == null ? MetaScalar.From(new MetaNull()) : binder.Map(value).AsT0;
                     }
                 };
                 return new MetaObject()

@@ -19,7 +19,11 @@ namespace MetaTypes
         public MetaType Type { get; set; }
     }
 
-    public class MetaScalar : ValueOf<OneOf<string, int, double, float>, MetaScalar>
+    public class MetaScalar : ValueOf<OneOf<string, int, decimal, float, double, bool, DateTimeOffset, MetaNull>, MetaScalar>
+    {
+    }
+
+    public class MetaNull
     {
     }
 
@@ -72,7 +76,11 @@ namespace MetaTypes
         public static implicit operator MetaValue(MetaArray x) => MetaValue.From(x);
     }
 
-    public class MetaResult : ValueOf.ValueOf<bool, MetaResult>
+    public class MetaResult : ValueOf.ValueOf<OneOf<MetaValue, MetaError>, MetaResult>
+    {
+    }
+
+    public class MetaError : ValueOf<string, MetaError>
     {
     }
 }
