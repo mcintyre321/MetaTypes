@@ -92,15 +92,15 @@ namespace MetaTypes.Mapping
                 {
                     Name = MetaName.From(propertyInfo.Name),
                     Type = ToMetaType(propertyInfo.PropertyType),
-                    GetValue = propertyInfo.CanRead ? () =>
+                    GetValue = !propertyInfo.CanRead ? null as Func<MetaValue> : () =>
                     {
                         var value = propertyInfo.GetValue(target);
                         return value == null ? MetaScalar.From(new MetaNull()) : binder.Map(value).AsT0;
-                    } : null,
-                    SetValue = propertyInfo.CanWrite ? (arg) =>
+                    },
+                    SetValue = !propertyInfo.CanWrite ? null as Action<MetaValue> : (arg) =>
                     {
                         propertyInfo.SetValue(target, FromMeta(arg.Value));
-                    } : null,
+                    },
                     
                 };
                 return new MetaObject()
