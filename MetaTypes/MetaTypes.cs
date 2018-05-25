@@ -16,6 +16,7 @@ namespace MetaTypes
     {
         public MetaName Name { get; set; }
         public Func<MetaValue> GetValue { get; set; }
+        public Action<MetaValue> SetValue { get; set; }
         public MetaType Type { get; set; }
     }
 
