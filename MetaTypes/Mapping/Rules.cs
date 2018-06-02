@@ -102,7 +102,7 @@ namespace MetaTypes.Mapping
                 {
                     Type = ToMetaType(target.GetType()),
                     Properties = target.GetType().GetTypeInfo().DeclaredProperties.Where(t => !t.IsSpecialName && t.DeclaringType == target.GetType()).Select(ToProperty).ToArray(),
-                    Actions = target.GetType().GetTypeInfo().DeclaredMethods.Where(t => !t.IsSpecialName && t.DeclaringType == target.GetType()).Select(ToAction).ToArray()
+                    Actions = target.GetType().GetTypeInfo().DeclaredMethods.Where(t => !t.Name.StartsWith("get_") && !t.Name.StartsWith("set_") && !t.IsSpecialName && t.DeclaringType == target.GetType()).Select(ToAction).ToArray()
                 };
             }
             return target => (Mapper<MetaValue>.RuleOutput)(MetaValue)ToMetaObject(target);
