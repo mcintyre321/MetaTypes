@@ -92,17 +92,22 @@ namespace MetaTypes.Mapping
                 {
                     Name = MetaName.From(propertyInfo.Name),
                     Type = ToMetaType(propertyInfo.PropertyType),
-                    GetValue = () =>
+                    GetValue = !propertyInfo.CanRead ? null as Func<MetaValue> : () =>
                     {
                         var value = propertyInfo.GetValue(target);
                         return value == null ? MetaScalar.From(new MetaNull()) : binder.Map(value).AsT0;
-                    }
+                    },
+                    SetValue = !propertyInfo.CanWrite ? null as Action<MetaValue> : (arg) =>
+                    {
+                        propertyInfo.SetValue(target, FromMeta(arg.Value));
+                    },
+                    
                 };
                 return new MetaObject()
                 {
                     Type = ToMetaType(target.GetType()),
                     Properties = target.GetType().GetTypeInfo().DeclaredProperties.Where(t => !t.IsSpecialName && t.DeclaringType == target.GetType()).Select(ToProperty).ToArray(),
-                    Actions = target.GetType().GetTypeInfo().DeclaredMethods.Where(t => !t.Name.StartsWith("get_") && !t.Name.StartsWith("set_") && !t.IsSpecialName && t.DeclaringType == target.GetType()).Select(ToAction).ToArray()
+                    Actions = target.GetType().GetTypeInfo().DeclaredMethods.Where(t => !t.Name.StartsWith("<") && !t.Name.StartsWith("get_") && !t.Name.StartsWith("set_") && t.DeclaringType == target.GetType()).Select(ToAction).ToArray()
                 };
             }
             return target => (Mapper<MetaValue>.RuleOutput)(MetaValue)ToMetaObject(target);
